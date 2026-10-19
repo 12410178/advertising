@@ -1,4 +1,4 @@
-# ClickGuard — Frontend Aktivitas 11
+# ClickGuard — Project Advertising
 
 Kerangka awal dashboard React untuk proyek Sistem Deteksi Fraud Klik Iklan Digital Menggunakan Machine Learning (Kelompok 2).
 
@@ -15,7 +15,7 @@ Kerangka awal dashboard React untuk proyek Sistem Deteksi Fraud Klik Iklan Digit
 
 ## Instalasi dan menjalankan
 1. Ekstrak folder proyek.
-2. Buka terminal di folder `frontend-aktivitas11`.
+2. Buka terminal di folder `Project Advertising`.
 3. Jalankan:
 
    ```bash
@@ -35,7 +35,7 @@ npm run preview
 ## Struktur folder
 
 ```text
-frontend-aktivitas11/
+Project Advertising/
 ├── index.html
 ├── package.json
 ├── postcss.config.js
