@@ -470,3 +470,25 @@ footer { display: flex; justify-content: space-between; gap: 10px; border-top: 1
   .scatter-sample { width: 6px; height: 6px; }
   .chart-demo-note { font-size: 9px; padding: 9px 10px; }
 }
+
+
+/* Live API status for the traffic chart */
+.api-status {
+  display: flex; align-items: center; gap: 8px; width: fit-content; max-width: 100%;
+  margin: 2px 0 12px; padding: 7px 10px; border: 1px solid #e4eaf4;
+  border-radius: 9px; background: #f8faff; color: #74839c; font-size: 10px;
+  line-height: 1.5; overflow-wrap: anywhere;
+}
+.api-status-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #9aa8bd; }
+.api-status-success { color: #087d5b; border-color: #ccefe2; background: #f0fbf6; }
+.api-status-success .api-status-dot { background: #0b9b70; box-shadow: 0 0 0 3px #0b9b7018; }
+.api-status-empty { color: #89651b; border-color: #f3e4bd; background: #fffaf0; }
+.api-status-empty .api-status-dot { background: #d89a20; }
+.api-status-error { color: #b53b55; border-color: #f4d5dc; background: #fff5f7; }
+.api-status-error .api-status-dot { background: #e34f70; }
+.api-status-loading .api-status-dot { background: #4778f7; animation: api-pulse 1.2s ease-in-out infinite; }
+@keyframes api-pulse { 50% { opacity: .35; } }
+
+/* Backend connected state: subtle styling, preserving the existing dashboard design. */
+.status-chip.status-connected { color: #07865f; background: #eafaf4; border-color: #c8f0e1; }
+.status-chip.status-connected > span { background: #12a77a; }

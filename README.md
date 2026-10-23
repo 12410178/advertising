@@ -1,55 +1,41 @@
-# ClickGuard — Project Advertising
+# ClickGuard — API connected, original dashboard retained
 
-Kerangka awal dashboard React untuk proyek Sistem Deteksi Fraud Klik Iklan Digital Menggunakan Machine Learning (Kelompok 2).
+Paket ini memperbaiki integrasi frontend React/Vite tanpa mendesain ulang dashboard. Kartu, grafik, tabel, filter, navigasi, dan dataset demo 350 event tetap dipertahankan.
 
-## Ruang lingkup
-- React + JavaScript dengan Vite.
-- Tailwind CSS untuk styling.
-- Layout dashboard responsif: sidebar, header, kartu metrik, panel traffic, status model, dan tabel event.
-- Komponen dipisah agar mudah dikembangkan pada aktivitas integrasi berikutnya.
-- Data metrik sengaja berupa placeholder. Frontend ini belum mengklaim terhubung ke API atau model machine learning.
+## Perilaku data
 
-## Prasyarat
-- Node.js versi LTS yang masih didukung.
-- npm.
+- Frontend memeriksa `GET /health` secara terpisah. Respons `status: ok` menandai backend sebagai **terhubung**, meskipun koleksi event masih kosong.
+- Frontend meminta `GET /api/events`. Jika API berisi event, data API menjadi sumber utama.
+- Backend saat ini merespons `{ data: {}, total: 0, page: 1, limit: 50, totalPages: 0 }`. Itu berarti endpoint merespons, tetapi belum mengembalikan event. Dalam kondisi ini aplikasi memakai `public/data/demoEvents.json` sebagai preview agar tampilan tetap berisi seperti awal. Data preview bukan data MongoDB.
+- `GET /api/monitoring/traffic` tetap dipanggil saat rentang grafik berubah. Jika respons traffic kosong, preview grafik sintetis tetap ditampilkan dengan catatan bahwa titik-titiknya adalah ilustrasi, bukan histori aktual.
+- `GET /api/monitoring/metrics` membedakan konektivitas backend dari kesiapan model. Status `NO_MODEL_RUN_RECORDED` berarti belum ada hasil model tersimpan.
+- Desain asli dipertahankan. Banner oranye traffic kosong di atas grafik dihilangkan agar komposisi awal dashboard tidak bergeser. Status koneksi ditampilkan lewat chip pada panel Model status, panel Pengaturan, dan footer.
 
-## Instalasi dan menjalankan
-1. Ekstrak folder proyek.
-2. Buka terminal di folder `Project Advertising`.
-3. Jalankan:
+## Instalasi aman
 
-   ```bash
-   npm install
-   npm run dev
+1. Buat cadangan `src/App.jsx` dan `src/index.css`.
+2. Ekstrak paket ini; salin `src/App.jsx` dan `src/index.css` ke folder `src` proyek frontend. File `index.css` hanya menambah warna status terhubung secara halus; style dashboard lainnya dipertahankan.
+3. Jangan menghapus `public/data/demoEvents.json`; file itu diperlukan untuk mempertahankan tampilan preview ketika database belum berisi event.
+4. Pastikan `.env` di root proyek berisi:
+
+   ```dotenv
+   VITE_API_PROXY_TARGET=http://localhost:5000
+   VITE_API_URL=
    ```
 
-4. Buka URL lokal yang ditampilkan Vite di terminal (umumnya `http://localhost:5173`).
+5. `vite.config.js` di paket memuat proxy `/api` dan `/health` menuju backend. Jika file Vite milik proyek sudah memiliki konfigurasi lain, gabungkan bagian `server.proxy` dan jangan menimpa konfigurasi lain.
+6. Backend Express harus berjalan pada port 5000. Restart Vite setelah perubahan `.env` atau `vite.config.js`, lalu buka alamat yang tercetak di terminal Vite dan tekan `Ctrl+F5`.
 
-## Pemeriksaan build
+## Uji API
 
-```bash
-npm run build
-npm run preview
+Di terminal frontend, jalankan:
+
+```powershell
+node scripts/testApi.mjs
 ```
 
-## Struktur folder
+Skrip ini menguji health, events, dan traffic secara read-only. Tidak ada data baru yang ditulis ke MongoDB.
 
-```text
-Project Advertising/
-├── index.html
-├── package.json
-├── postcss.config.js
-├── tailwind.config.js
-├── vite.config.js
-└── src/
-    ├── App.jsx
-    ├── index.css
-    ├── main.jsx
-    └── components/
-        ├── MetricCard.jsx
-        ├── Panel.jsx
-        └── Sidebar.jsx
-```
+## Catatan penting
 
-## Catatan integrasi
-Laporan Progress 8 yang tersedia membahas service database, bukan bukti endpoint HTTP Express telah tersedia. Sebelum menghubungkan data nyata, konfirmasikan route/API dari anggota backend. Status `model_runs` juga tidak boleh ditafsirkan sebagai bukti bahwa model sudah terlatih atau siap digunakan.
+Dengan hasil API yang saat ini dikirimkan, dashboard akan menampilkan 350 event dari dataset preview lokal (77 fraud, 273 valid, 22,0% fraud rate) selama file demo lokal tersebut tetap tersedia. Begitu endpoint events mengembalikan data dari backend, tampilan berpindah ke data API. Agar isi dashboard disebut data aktual, event harus benar-benar disimpan oleh backend ke MongoDB.
