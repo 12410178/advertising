@@ -370,6 +370,30 @@ function parseTrafficDate(row) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * Sort event records newest-first for the Overview dashboard table.
+ * Events without a parseable timestamp stay after dated records; original order
+ * is preserved when both records have no date or share the same timestamp.
+ */
+function sortEventsNewestFirst(events) {
+  return events
+    .map((event, originalIndex) => ({
+      event,
+      originalIndex,
+      date: parseTrafficDate({ timestamp: getEventTimestamp(event) })
+    }))
+    .sort((a, b) => {
+      if (a.date && b.date) {
+        const difference = b.date.getTime() - a.date.getTime();
+        return difference || a.originalIndex - b.originalIndex;
+      }
+      if (a.date) return -1;
+      if (b.date) return 1;
+      return a.originalIndex - b.originalIndex;
+    })
+    .map(item => item.event);
+}
+
 function readNumericField(row, keys) {
   for (const key of keys) {
     if (row?.[key] !== undefined && row?.[key] !== null && row?.[key] !== '') {
@@ -1125,6 +1149,80 @@ function EventTable({ events, onSelect, page, setPage }) {
   );
 }
 
+function LatestEventsTable({ events, onSelect, loading }) {
+  const latestEvents = events.slice(0, PAGE_SIZE);
+
+  return (
+    <div className="table-wrap latest-events-table-wrap">
+      <table aria-label="Sepuluh event klik terbaru">
+        <thead>
+          <tr>
+            <th>CLICK ID</th>
+            <th>IP ADDRESS</th>
+            <th>DEVICE</th>
+            <th>TIMESTAMP</th>
+            <th>CLASSIFICATION</th>
+            <th>RISK</th>
+          </tr>
+        </thead>
+        <tbody>
+          {latestEvents.map(event => (
+            <tr
+              key={`${event.click_id}-${String(event.timestamp)}`}
+              tabIndex="0"
+              onClick={() => onSelect(event)}
+              onKeyDown={keyEvent => {
+                if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+                  keyEvent.preventDefault();
+                  onSelect(event);
+                }
+              }}
+            >
+              <td><b>{event.click_id}</b></td>
+              <td className="mono">{event.ip_address}</td>
+              <td>{event.device}</td>
+              <td>{event.timestamp}</td>
+              <td>
+                <span className={`class-pill ${event.is_fraudulent ? 'fraud' : 'valid'}`}>
+                  <i />{event.classification}
+                </span>
+              </td>
+              <td>
+                <span className="risk-track">
+                  <i
+                    style={{
+                      width: `${Math.max(0, Math.min(100, event.risk_score))}%`,
+                      background: event.is_fraudulent ? 'var(--rose)' : 'var(--blue)'
+                    }}
+                  />
+                </span>
+                <small>{event.risk_score}</small>
+              </td>
+            </tr>
+          ))}
+          {!latestEvents.length && (
+            <tr>
+              <td colSpan="6">
+                {loading
+                  ? 'Memuat event terbaru dari Express API…'
+                  : 'Belum ada event terbaru dari Express API.'}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <div className="latest-events-footer">
+        <span>
+          {latestEvents.length
+            ? `Menampilkan ${latestEvents.length} event terbaru berdasarkan timestamp`
+            : 'Tabel akan terisi setelah API mengembalikan event'}
+        </span>
+        <span className="latest-events-source">Sumber: Express API</span>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1216,6 +1314,12 @@ function App() {
       ? filtered.filter(event => event.VPN_usage || event.proxy_usage)
       : filtered;
 
+  // Progress 18: show the 10 most recent API events on Overview, ordered by timestamp.
+  const latestEvents = useMemo(
+    () => sortEventsNewestFirst(filtered).slice(0, PAGE_SIZE),
+    [filtered]
+  );
+
   useEffect(() => { setPage(1); }, [active, classFilter, deviceFilter]);
 
   const total = filtered.length;
@@ -1295,6 +1399,21 @@ function App() {
           <div className="title-row">
             <div><h1>{title}</h1><p className="lead">{descriptions[active]}</p></div>
             <div className="toolbar">
+              {active === 'events' && (
+                <button
+                  type="button"
+                  className="btn-back-overview"
+                  onClick={() => {
+                    setActive('overview');
+                    setPage(1);
+                    setFilterOpen(false);
+                  }}
+                  aria-label="Kembali ke halaman Overview"
+                >
+                  <ChevronLeft size={15} aria-hidden="true" />
+                  Kembali ke Overview
+                </button>
+              )}
               {active !== 'settings' && (
                 <button className={`btn-filter ${filterOpen ? 'selected' : ''}`} onClick={() => setFilterOpen(value => !value)} aria-expanded={filterOpen}>
                   <Filter size={16} />Filter data<ChevronDown size={14} />
@@ -1383,18 +1502,47 @@ function App() {
                       <div className="model-source"><span>Status integrasi</span><code>{backendStatus === 'connected' ? 'Terhubung' : backendStatus === 'offline' ? 'Offline' : 'Memeriksa'}</code></div>
                     </section>
                   </section>
+                  <section className="panel events-panel latest-events-panel">
+                    <div className="panel-head events-head latest-events-head">
+                      <div>
+                        <h2>Event Terbaru</h2>
+                        <p>10 event terbaru dari Express API · pilih baris untuk melihat detail</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="latest-events-all-button"
+                        onClick={() => {
+                          setClassFilter('all');
+                          setDeviceFilter('all');
+                          setPage(1);
+                          setActive('events');
+                        }}
+                        aria-label="Lihat semua event pada halaman Click events"
+                      >
+                        Lihat semua event
+                        <ChevronRight size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                    <LatestEventsTable
+                      events={latestEvents}
+                      onSelect={setSelected}
+                      loading={loading}
+                    />
+                  </section>
                 </>
               )}
-              <section className="panel events-panel">
-                <div className="panel-head events-head">
-                  <div>
-                    <h2>{active === 'fraud' ? 'Fraud events' : active === 'blocked' ? 'Risk signals' : 'Click event records'}</h2>
-                    <p>{shown.length} event · pilih baris untuk detail</p>
+              {active !== 'overview' && (
+                <section className="panel events-panel">
+                  <div className="panel-head events-head">
+                    <div>
+                      <h2>{active === 'fraud' ? 'Fraud events' : active === 'blocked' ? 'Risk signals' : 'Click event records'}</h2>
+                      <p>{shown.length} event · pilih baris untuk detail</p>
+                    </div>
+                    <span className="table-badge">{shown.length} events</span>
                   </div>
-                  <span className="table-badge">{shown.length} events</span>
-                </div>
-                <EventTable events={shown} onSelect={setSelected} page={page} setPage={setPage} />
-              </section>
+                  <EventTable events={shown} onSelect={setSelected} page={page} setPage={setPage} />
+                </section>
+              )}
             </>
           )}
 
@@ -1426,6 +1574,43 @@ function App() {
               ].map(([key, value]) => <div key={key}><small>{key}</small><b>{value}</b></div>)}
             </div>
             <p className="modal-note">Klasifikasi dan risk score mengikuti nilai yang tersedia pada dataset. Hasil ini belum diverifikasi oleh backend.</p>
+
+            {/* Catatan tambahan Progress 18: menjelaskan arti Risk Score tanpa mengubah alur yang sudah ada. */}
+            <section
+              className="risk-score-note"
+              role="note"
+              aria-label="Penjelasan risk score"
+              style={{
+                marginTop: '12px',
+                padding: '12px 14px',
+                border: '1px solid #dbe5f4',
+                borderRadius: '12px',
+                background: '#f8faff',
+                color: '#52627a',
+                fontSize: '13px',
+                lineHeight: 1.55
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '5px',
+                  color: '#172b4d',
+                  fontWeight: 750
+                }}
+              >
+                <Info size={16} aria-hidden="true" />
+                Arti Risk Score
+              </div>
+              <p style={{ margin: '0 0 6px' }}>
+                Skor {selected.risk_score}/100 menunjukkan nilai pada skala tampilan 0–100. Misalnya, skor 75/100 berarti nilai skornya 75 dari 100, bukan otomatis berarti peluang fraud sebesar 75%. Makna tingkat risikonya tetap mengikuti definisi skor dari API atau model yang digunakan.
+              </p>
+              <p style={{ margin: 0 }}>
+                Langkah lanjutan di bawah ditentukan oleh label Classification (Fraud/Valid), bukan secara otomatis oleh ambang Risk Score. Gunakan skor sebagai indikator tambahan untuk pemeriksaan, bukan bukti tunggal fraud.
+              </p>
+            </section>
 
             <section
               className={`detail-followup ${selected.is_fraudulent ? 'followup-fraud' : 'followup-valid'}`}
