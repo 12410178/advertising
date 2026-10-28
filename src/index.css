@@ -668,3 +668,48 @@ footer { display: flex; justify-content: space-between; gap: 10px; border-top: 1
     flex: 1 1 auto;
   }
 }
+
+
+/* Fix alignment of the toolbar buttons on narrow screens without changing the JSX. */
+.title-row,
+.toolbar {
+  min-width: 0;
+}
+
+.toolbar > button {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    width: 100%;
+    gap: 6px;
+  }
+
+  .toolbar > button {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 4px;
+    gap: 4px;
+    font-size: clamp(8px, 2.5vw, 11px);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .toolbar > button > svg {
+    flex: 0 0 auto;
+  }
+
+  .btn-back-overview {
+    flex: initial;
+  }
+
+  .btn-filter,
+  .btn-download {
+    flex: initial;
+  }
+}
