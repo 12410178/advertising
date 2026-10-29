@@ -1229,6 +1229,7 @@ function App() {
   const [loadError, setLoadError] = useState('');
   const [dataSource, setDataSource] = useState('loading');
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [modelMetrics, setModelMetrics] = useState(null);
   const [modelStatus, setModelStatus] = useState('checking');
   const [active, setActive] = useState('overview');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -1266,11 +1267,45 @@ function App() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       })
+      
       .then(payload => {
         if (!alive) return;
-        const status = String(payload?.status ?? payload?.data?.status ?? '').trim();
-        setModelStatus(status === 'NO_MODEL_RUN_RECORDED' ? 'no-run' : status ? 'available' : 'unknown');
+
+        const status = String(
+          payload?.status ?? payload?.data?.status ?? ''
+        ).trim();
+
+        const metrics = payload?.data;
+
+        if (
+          status === 'RESULT_RECORDED' &&
+          metrics &&
+          typeof metrics === 'object' &&
+          !Array.isArray(metrics)
+        ) {
+          setModelMetrics({
+            model_type: typeof metrics.model_type === 'string'
+              ? metrics.model_type
+              : 'Model tidak diketahui',
+            accuracy: metrics.accuracy,
+            precision: metrics.precision,
+            recall: metrics.recall,
+            f1_score: metrics.f1_score,
+            roc_auc: metrics.roc_auc
+          });
+        } else {
+          setModelMetrics(null);
+        }
+
+                setModelStatus(
+          status === 'NO_MODEL_RUN_RECORDED'
+            ? 'no-run'
+            : status === 'RESULT_RECORDED'
+              ? 'available'
+              : 'unknown'
+        );
       })
+      
       .catch(error => {
         if (alive && error.name !== 'AbortError') setModelStatus('unknown');
       });
@@ -1500,6 +1535,31 @@ function App() {
                         <p>{modelStatus === 'no-run' ? 'Backend terhubung, tetapi belum ada hasil model run di MongoDB.' : 'Status model dan hasil deteksi mengikuti respons endpoint backend.'}</p>
                       </div>
                       <div className="model-source"><span>Status integrasi</span><code>{backendStatus === 'connected' ? 'Terhubung' : backendStatus === 'offline' ? 'Offline' : 'Memeriksa'}</code></div>
+                      {modelMetrics && (
+                        <div className="model-metrics">
+                          <h3>Metrik evaluasi model</h3>
+                          <p className="model-metrics-name">{modelMetrics.model_type}</p>
+
+                          <div className="model-metrics-grid">
+                            {[
+                              ['Accuracy', modelMetrics.accuracy],
+                              ['Precision', modelMetrics.precision],
+                              ['Recall', modelMetrics.recall],
+                              ['F1-score', modelMetrics.f1_score],
+                              ['ROC-AUC', modelMetrics.roc_auc]
+                            ].map(([label, value]) => (
+                              <div className="model-metric-item" key={label}>
+                                <span>{label}</span>
+                                <strong>
+                                  {typeof value === 'number' && Number.isFinite(value)
+                                    ? `${(value * 100).toFixed(2)}%`
+                                    : '—'}
+                                </strong>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </section>
                   </section>
                   <section className="panel events-panel latest-events-panel">
